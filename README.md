@@ -1,2 +1,2 @@
 ### Overview
-AI-native platform where agents can understand software intent, interact with code and infrastructure through tools, provision governed environments, observe running systems, and perform controlled remediation.
+End-to-end search-ranking optimization platform covering event ingestion, feature engineering, ranking, experimentation, model deployment, monitoring, and optimization.
