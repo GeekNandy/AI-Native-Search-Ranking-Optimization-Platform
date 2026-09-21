@@ -31,3 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local Spark practice outputs; fixtures and source remain tracked.
+practice/spark/my_results/
+practice/spark/results/
+practice/spark/verified_results/
+practice/spark/spark-warehouse/
+practice/spark/artifacts/
+practice/spark/derby.log
+practice/spark/metastore_db/
