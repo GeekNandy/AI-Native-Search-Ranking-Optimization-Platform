@@ -1,9 +1,11 @@
 # Build the platform by learning one boundary at a time
 
-The repository currently has a Spring application scaffold, ten Spark reference
-labs, and a learner starter for the first lab. The stages below describe the
-next work, not completed features. Use Java and SQL for the data and serving
-track. Keep each change small enough to explain and verify on its own.
+The repository contains an implemented catalog application foundation, ten Spark
+reference labs, and a learner starter for the first lab. See the
+[development guide](development.md) for the foundation's remaining runtime
+verification gate. The stages below describe subsequent platform work. Use Java
+and SQL for the data and serving track, and keep each change small enough to
+explain and verify on its own.
 
 ## Stage 1: event contracts and metrics
 

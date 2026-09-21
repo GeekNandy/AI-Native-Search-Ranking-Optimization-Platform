@@ -1,55 +1,92 @@
 # AI-Native Search Ranking Optimization Platform
 
-A Java-first learning project for search ranking: turn event data into reliable
-metrics, build features, serve a ranking baseline, and then add model evaluation
-and experiments. SQL and Apache Spark are the first practice track.
+A Java/Spring platform for developing search-ranking data and services. The
+current application provides a PostgreSQL-backed ad catalog. Separate Java/Spark
+reference implementations define selected analytics and feature semantics.
 
-## What works today
+## Current scope
 
 | Component | Status |
 | --- | --- |
-| Java 21 / Spring Boot application | Generated application and context-test scaffold |
-| Java / Spark practice | Ten runnable reference labs with synthetic fixtures and named checks |
-| First learner exercise | CTR problem, sample data, expected results, and a starter method to implement |
-| Search API, feature publication, trained model, experiment service | Planned in the learning path; not implemented yet |
+| Java 21 / Spring Boot application | Catalog API with validated create/read operations |
+| PostgreSQL persistence | Explicit JDBC queries, UUID identifiers, UTC timestamps, Flyway migration |
+| Operational behavior | Health, liveness/readiness, bounded DB waits, Problem Details errors |
+| Verification | Unit tests, real HTTP/PostgreSQL integration tests, smoke script, CI workflow |
+| Java / Spark references | Ten implementations with synthetic fixtures and named checks |
+| Ranking, feature publication, models, experiments | Subsequent platform milestones |
 
-These exercises check data correctness on small inputs. They do not establish
-production throughput, ranking quality, or business lift.
+The application foundation passes its **JDK 21 build, eight unit tests, and
+21 PostgreSQL integration checks in CI**. The manual Compose startup, smoke,
+and restart/recovery exercises remain pending. See
+[verification evidence](docs/verification.md) for the tested commit and run.
+No production throughput, ranking quality, or business lift has been established.
 
 ## Start here
 
-1. Read [Exercise 1: clicked-impression CTR](docs/exercises/01-clicked-impression-ctr.md).
-2. Follow the [Spark setup instructions](practice/spark/README.md).
-3. Implement `compute` in [Lab01Ctr.java](practice/spark/Lab01Ctr.java).
-4. From the repository root, run:
+Install JDK 21 and Docker with Compose. Copy `.env.example` to `.env` and choose
+a local database password. From the repository root:
 
 ```bash
-export SPARK_PREP_HOME=/absolute/path/to/spark-4.0.1-bin-hadoop3
-bash practice/spark/run.sh --learner --lab 1
-```
-
-The learner starter intentionally throws until you implement it. To inspect the
-working reference, use `--lab 1` without `--learner`. To check all ten references:
-
-```bash
-bash practice/spark/run.sh --lab all
-```
-
-The runner compiles Java and calls `spark-submit`; it does not run Python code.
-Its Spark dependencies stay separate from the Spring application.
-
-## Run the Spring application
-
-Install JDK 21 and use the checked-in Maven wrapper:
-
-```bash
-./mvnw test
+set -a
+source .env
+set +a
+docker compose up -d --wait postgres
 ./mvnw spring-boot:run
 ```
 
-The current application uses `spring-boot-starter` and has no HTTP server or
-endpoint yet. Stage 3 adds a small search API. Maven needs access to its dependency
-repositories on first use.
+The application listens on `127.0.0.1:8080`. In another terminal:
+
+```bash
+curl -i http://127.0.0.1:8080/actuator/health/readiness
+curl -i http://127.0.0.1:8080/api/v1/ads \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Camera","category":"Electronics"}'
+```
+
+Creation returns `201` with the ad and its relative `Location` URI. Fetch that
+URI to read the persisted record. Creation is not idempotent; see the
+[API contract](docs/api.md) before implementing client retries.
+
+## Verify
+
+Run unit tests or the complete verification gate:
+
+```bash
+./mvnw test
+./mvnw -Pintegration verify
+```
+
+Integration tests require Docker and create disposable PostgreSQL instances;
+they do not use your development database. The CI workflow runs the full gate.
+For an already-running local application, `bash scripts/smoke-test.sh` performs
+a create/read/validation check using `curl` and `jq`.
+
+## Documentation
+
+| Document | Purpose |
+| --- | --- |
+| [Development guide](docs/development.md) | Setup, configuration, test commands, troubleshooting |
+| [API contract](docs/api.md) / [OpenAPI](docs/openapi.yaml) | Requests, responses, errors, identity, retry semantics |
+| [Architecture](docs/architecture.md) | Implemented module boundaries and future platform topology |
+| [Foundation decision](docs/decisions/0001-application-foundation.md) | Alternatives, trade-offs, and consequences |
+| [Operations](docs/operations.md) | Startup, database outages, health, persistence, recovery |
+| [Verification evidence](docs/verification.md) | Checks performed and remaining gates |
+
+## Analytics references
+
+The standalone [Java/Spark references](practice/spark/README.md) cover CTR, lookup
+joins, ranking windows, event versions, rolling metrics, skew, aggregation,
+experiments, point-in-time features, and Parquet behavior. Their runtime stays
+outside the HTTP application's classpath.
+
+```bash
+export SPARK_PREP_HOME=/absolute/path/to/spark-4.0.1-bin-hadoop3
+bash practice/spark/run.sh --lab all
+```
+
+The [CTR exercise](docs/exercises/01-clicked-impression-ctr.md) provides an optional
+implementation exercise alongside the working references. These references are
+not yet integrated with catalog data.
 
 ## Build the platform in stages
 
