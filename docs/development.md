@@ -87,8 +87,8 @@ through Surefire. An unavailable Docker runtime causes integration verification
 to fail rather than silently reporting skipped coverage.
 
 The GitHub Actions workflow runs the full verification command on pull requests
-and changes to `master`, with JDK 21. It must be committed and pushed after review
-before it can run. Successful local fixture checks do not substitute for that gate.
+and changes to `master`, with JDK 21. Successful local fixture checks do not
+substitute for that gate.
 
 ## Configuration
 
@@ -132,10 +132,11 @@ stored inside an existing PostgreSQL volume.
 
 ## Current verification evidence
 
-During implementation, Maven dependency resolution was blocked by a DNS failure
-for Maven Central. The execution environment also had Java 17 and no Docker.
-Full JDK 21 compilation and PostgreSQL integration verification remain required
-before merging. See the completion report for checks that could be executed here.
+The JDK 21 build, eight unit tests, and 21 PostgreSQL integration checks passed
+in GitHub Actions. The local implementation environment has Java 17, no Docker,
+and could not resolve Maven Central, so the manual Compose startup, smoke, and
+restart/recovery exercises remain pending. See the
+[verification report](verification.md) for the tested commit and CI run.
 
 ## Primary references
 

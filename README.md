@@ -15,11 +15,11 @@ reference implementations define selected analytics and feature semantics.
 | Java / Spark references | Ten implementations with synthetic fixtures and named checks |
 | Ranking, feature publication, models, experiments | Subsequent platform milestones |
 
-The application foundation is implemented. **Full JDK 21 build and
-PostgreSQL integration verification remain pending** because the implementation
-environment could not resolve Maven Central and has no Docker/JDK 21 runtime.
-See [verification evidence](docs/verification.md). No production throughput,
-ranking quality, or business lift has been established.
+The application foundation passes its **JDK 21 build, eight unit tests, and
+21 PostgreSQL integration checks in CI**. The manual Compose startup, smoke,
+and restart/recovery exercises remain pending. See
+[verification evidence](docs/verification.md) for the tested commit and run.
+No production throughput, ranking quality, or business lift has been established.
 
 ## Start here
 

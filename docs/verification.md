@@ -1,10 +1,24 @@
 # Application foundation: verification evidence
 
 This report describes verification of the `application-foundation` change. It
-separates executed checks from tests supplied for an environment with JDK 21,
-Docker, and Maven Central access.
+separates CI results, local checks, and remaining manual exercises.
 
-## Executed checks
+## CI result
+
+On 21 September 2026, [GitHub Actions run 35658752310](https://github.com/GeekNandy/AI-Native-Search-Ranking-Optimization-Platform/actions/runs/35658752310)
+passed for application commit `3bd69216883a1cba7e68cb63359b3471c7c71329`.
+The job used JDK 21 and real PostgreSQL containers and ran:
+
+```bash
+./mvnw --batch-mode --no-transfer-progress -Pintegration verify
+```
+
+Maven reported `BUILD SUCCESS`: eight unit tests and 21 integration checks,
+with zero failures, errors, or skipped tests. This validates compilation,
+packaging, and the supplied HTTP/database contracts. The following documentation
+update records that result without changing application or test code.
+
+## Executed local checks
 
 | Check | Result | Scope |
 | --- | --- | --- |
@@ -22,7 +36,7 @@ The core checks used an isolated in-memory implementation of the repository
 interface to exercise application behavior. They do not validate JDBC, Flyway,
 PostgreSQL, Bean Validation, JSON mapping, or HTTP behavior.
 
-## Blocked checks
+## Local environment limits
 
 `./mvnw -B test` failed before compilation because the execution environment
 could not resolve `repo.maven.apache.org` while fetching the existing Spring Boot
@@ -32,10 +46,12 @@ and has no Docker runtime.
 
 Consequently, the checked-in JUnit unit suite, full application compilation,
 PostgreSQL integration suite, Docker Compose startup, HTTP smoke script, and
-restart/recovery exercise have not been executed here. These results describe
-local verification; consult the pull request's checks for subsequent CI results.
+restart/recovery exercise could not be executed locally. CI subsequently ran
+the full build, unit suite, and PostgreSQL integration suite successfully.
+Compose startup, the shell-based HTTP smoke test, and the manual persistence/
+recovery exercise remain outstanding.
 
-## Required verification gate
+## Verification gate and remaining exercises
 
 With JDK 21, a supported Docker runtime, and dependency access:
 
@@ -52,9 +68,9 @@ responses and the distinction between liveness and readiness.
 
 Then follow [local startup](development.md), run
 `bash scripts/smoke-test.sh`, and perform the persistence/recovery steps in the
-[operations guide](operations.md). Record the actual build output and update
-this report before treating the foundation as fully verified.
+[operations guide](operations.md). Record their results before marking those
+manual exercises complete.
 
 The GitHub workflow runs the same integration gate on pull requests and pushes
-to `master`. Passing it establishes these test
-contracts, not production capacity or ranking effectiveness.
+to `master`. Passing it establishes these test contracts, not production capacity
+or ranking effectiveness.

@@ -1,6 +1,6 @@
 # 0001: establish an explicit catalog and persistence boundary
 
-Status: implemented; full integration verification pending.
+Status: implemented; unit and PostgreSQL integration verification passed in CI.
 
 ## Context
 
@@ -56,6 +56,7 @@ operational review before deployment.
 
 Unit tests cover domain boundaries and use-case behavior. Integration tests
 cover real HTTP, migrations, JDBC, SQL binding, constraints, validation, and DB
-outage responses. The supplied CI workflow runs both levels. Full integration
-execution is a required remaining gate because the current implementation
-environment cannot resolve Maven Central and has no Docker/JDK 21 runtime.
+outage responses. The supplied CI workflow runs both levels; the JDK 21 build,
+eight unit tests, and 21 integration checks passed. The local Compose startup,
+smoke, and restart/recovery exercises remain pending. See the
+[verification evidence](../verification.md) for the tested commit and run.
