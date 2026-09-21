@@ -32,6 +32,11 @@ build/
 ### VS Code ###
 .vscode/
 
+# Machine-specific database credentials and settings.
+.env
+.env.*
+!.env.example
+
 # Local Spark practice outputs; fixtures and source remain tracked.
 practice/spark/my_results/
 practice/spark/results/

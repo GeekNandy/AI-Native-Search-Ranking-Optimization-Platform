@@ -1,0 +1,216 @@
+openapi: 3.1.0
+info:
+  title: Search Ranking Platform — Ad Catalog
+  version: 1.0.0
+  description: >-
+    Local application foundation. Creates and retrieves ad catalog entries.
+    POST is not idempotent. Authentication and external deployment are outside
+    this increment; the application binds to loopback by default.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /api/v1/ads:
+    post:
+      operationId: createAd
+      summary: Create an ad catalog entry
+      description: >-
+        Generates a new UUID on each request. Validated strings are stripped of
+        surrounding whitespace before storage. A failed or timed-out request
+        may have an uncertain write outcome and must not be blindly retried.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAd'
+      responses:
+        '201':
+          description: Ad persisted
+          headers:
+            Location:
+              description: Relative URI of the created ad
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ad'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          description: Unsupported request content type
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+        '500':
+          $ref: '#/components/responses/UnexpectedFailure'
+  /api/v1/ads/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getAd
+      summary: Retrieve an ad by its UUID
+      responses:
+        '200':
+          description: Ad found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ad'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Ad not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+        '500':
+          $ref: '#/components/responses/UnexpectedFailure'
+  /actuator/health:
+    get:
+      operationId: aggregateHealth
+      summary: Aggregate configured health contributors
+      responses:
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          $ref: '#/components/responses/Unhealthy'
+  /actuator/health/liveness:
+    get:
+      operationId: liveness
+      summary: Application liveness independent of database connectivity
+      responses:
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          $ref: '#/components/responses/Unhealthy'
+  /actuator/health/readiness:
+    get:
+      operationId: readiness
+      summary: Readiness state and database connectivity
+      responses:
+        '200':
+          $ref: '#/components/responses/Healthy'
+        '503':
+          $ref: '#/components/responses/Unhealthy'
+components:
+  schemas:
+    CreateAd:
+      type: object
+      additionalProperties: false
+      required: [title, category]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >-
+            Length is measured in Unicode code points before whitespace stripping.
+            Blank values and Unicode control characters are rejected.
+          examples: [Camera]
+        category:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: >-
+            Free-form category with preserved case. Blank values and Unicode
+            control characters are rejected. Surrounding whitespace is stripped.
+          examples: [Electronics]
+    Ad:
+      type: object
+      required: [id, title, category, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category:
+          type: string
+          minLength: 1
+          maxLength: 64
+        createdAt:
+          type: string
+          format: date-time
+          description: Server-generated UTC timestamp, at most microsecond precision
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+        groups:
+          type: array
+          items:
+            type: string
+  responses:
+    BadRequest:
+      description: Invalid JSON, invalid fields, or invalid UUID
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DatabaseUnavailable:
+      description: Database operation could not be confirmed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnexpectedFailure:
+      description: Unexpected server failure with a generic public message
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Healthy:
+      description: Health contributors are UP
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Health'
+    Unhealthy:
+      description: Health contributors report DOWN or OUT_OF_SERVICE
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Health'

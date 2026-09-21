@@ -1,8 +1,41 @@
-# Target architecture and contracts
+# Architecture and contracts
 
-This is the intended architecture as the learning stages are completed. Today,
-the repository contains a Spring application scaffold and standalone Java Spark
-labs. The services and production paths below are not implemented yet.
+## Implemented application foundation
+
+The application contains a PostgreSQL-backed catalog with create/read HTTP
+operations, input validation, consistent error responses, and health endpoints.
+The application service and domain use only Java. HTTP and JDBC are adapters;
+Spring configuration supplies the repository and UTC clock.
+
+```mermaid
+flowchart TD
+    H[HTTP controller] --> U[Catalog use cases]
+    U --> D[Ad domain]
+    U --> P[Repository interface]
+    J[JDBC adapter] -. implements .-> P
+    J --> DB[(PostgreSQL)]
+    F[Flyway migrations] --> DB
+```
+
+The catalog packages are `catalog.api`, `catalog.application`, `catalog.domain`,
+and `catalog.infrastructure`. The root `api` package owns shared HTTP error
+handling. The application service waits for a successful insert before returning
+an ad. A single parameterized statement is the current write transaction.
+
+UUIDs identify ads; title and category are not uniqueness keys. Timestamps are
+UTC with microsecond precision. The catalog's `ads` table is not an impression
+log, click log, or feature store. Those require their own contracts.
+
+See [API semantics](api.md), [operational behavior](operations.md), and the
+[foundation decision](decisions/0001-application-foundation.md). Runtime
+integration verification remains pending in the current environment; see
+[development and verification](development.md).
+
+## Target search-ranking architecture
+
+The flow below describes future platform components. Standalone Java Spark
+references exist for selected data transformations; they are not yet integrated
+with the catalog application or deployed as a feature pipeline.
 
 ```mermaid
 flowchart TD
@@ -47,5 +80,6 @@ Publishing safely means choosing a mechanism appropriate to that storage system:
 a complete immutable snapshot plus an atomic/version-checked pointer is one
 option. Do not assume object storage has filesystem rename semantics.
 
-The first acceptance condition is an accurate metric with a defensible data
-contract. More infrastructure becomes useful after that foundation is reliable.
+The next feature should establish impression and click event contracts before
+connecting catalog data to analytics. Each additional component needs a concrete
+input/output contract and an acceptance check.
