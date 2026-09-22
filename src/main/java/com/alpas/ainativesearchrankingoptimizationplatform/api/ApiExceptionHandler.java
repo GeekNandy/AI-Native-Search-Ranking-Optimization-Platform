@@ -1,5 +1,6 @@
 package com.alpas.ainativesearchrankingoptimizationplatform.api;
 
+import com.alpas.ainativesearchrankingoptimizationplatform.platform.PlatformException;
 import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,14 +46,14 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             HttpMessageNotReadableException exception, HttpHeaders headers,
             HttpStatusCode status, WebRequest request) {
         return response(ProblemDetail.forStatusAndDetail(status,
-                "Request body must be valid JSON matching the ad schema."), headers);
+                "Request body must be valid JSON matching the endpoint schema."), headers);
     }
 
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException exception,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return response(ProblemDetail.forStatusAndDetail(status,
-                "A request parameter has an invalid format; ad IDs must be UUIDs."), headers);
+                "A request parameter has an invalid format."), headers);
     }
 
     @ExceptionHandler({DataAccessResourceFailureException.class,
@@ -69,6 +70,18 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         LOG.error("Unexpected request failure", exception);
         return response(ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred."), new HttpHeaders());
+    }
+
+    @ExceptionHandler(PlatformException.class)
+    ResponseEntity<Object> platformFailure(PlatformException exception) {
+        return response(ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(exception.status()),
+                exception.getMessage()), new HttpHeaders());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<Object> invalidArgument(IllegalArgumentException exception) {
+        return response(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                exception.getMessage()), new HttpHeaders());
     }
 
     private static ResponseEntity<Object> response(ProblemDetail problem, HttpHeaders headers) {

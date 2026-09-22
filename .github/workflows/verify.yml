@@ -1,4 +1,4 @@
-name: Verify application foundation
+name: Verify ranking platform
 
 on:
   pull_request:
@@ -12,7 +12,11 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    env:
+      DB_PASSWORD: integration-only-database-password
+      ADMIN_TOKEN: integration-only-admin-token-for-local-ci
+      COMPOSE_PROJECT_NAME: ranking-ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -24,3 +28,21 @@ jobs:
           cache: maven
       - name: Verify unit and PostgreSQL integration tests
         run: ./mvnw --batch-mode --no-transfer-progress -Pintegration verify
+      - name: Install the pinned Spark distribution for the Java batch runner
+        run: |
+          python -m pip install --no-deps --target "$RUNNER_TEMP/spark-runtime" pyspark==4.0.1
+          echo "SPARK_HOME=$RUNNER_TEMP/spark-runtime/pyspark" >> "$GITHUB_ENV"
+          echo "SPARK_LOCAL_IP=127.0.0.1" >> "$GITHUB_ENV"
+      - name: Build and start the containerized application
+        run: docker compose --profile application up --build -d --wait
+      - name: Verify HTTP behavior, database recovery, and trained-model serving
+        run: |
+          bash scripts/verify-runtime.sh
+          bash scripts/smoke-test.sh
+          bash scripts/demo.sh
+      - name: Show application logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200 application postgres
+      - name: Remove the disposable verification environment
+        if: always()
+        run: docker compose --profile application down --volumes

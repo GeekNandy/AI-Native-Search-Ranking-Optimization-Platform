@@ -1,5 +1,11 @@
 # Build the platform by learning one boundary at a time
 
+The six stages below now have integrated implementations. Use
+[roadmap coverage](roadmap.md) to navigate the code and
+[current verification](ml-verification.md) for evidence. The stage descriptions
+remain useful as exercises and design questions; they are not the current
+implementation status.
+
 The repository contains an implemented catalog application foundation, ten Spark
 reference labs, and a learner starter for the first lab. See the
 [development guide](development.md) for the foundation's remaining runtime

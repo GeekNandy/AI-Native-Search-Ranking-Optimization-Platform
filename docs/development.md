@@ -1,6 +1,6 @@
 # Development guide
 
-The application foundation provides an ad catalog API backed by PostgreSQL. Use
+The application provides catalog, search, interaction, model and experiment APIs backed by PostgreSQL. Use
 JDK 21, Docker with Compose, and the checked-in Maven wrapper. The database is
 the only Compose service; run the application from your IDE or Maven for fast
 debugging. Maven Central and the container registry must be reachable on first use.
@@ -132,11 +132,30 @@ stored inside an existing PostgreSQL volume.
 
 ## Current verification evidence
 
-The JDK 21 build, eight unit tests, and 21 PostgreSQL integration checks passed
-in GitHub Actions. The local implementation environment has Java 17, no Docker,
-and could not resolve Maven Central, so the manual Compose startup, smoke, and
-restart/recovery exercises remain pending. See the
-[verification report](verification.md) for the tested commit and CI run.
+The foundation's historical result is in [verification.md](verification.md).
+Current ranking/ML results and pending checks are tracked in
+[ml-verification.md](ml-verification.md).
+
+## Container and ML workflow
+
+`docker compose --profile application up --build -d` builds the Java 21 image and
+starts it after PostgreSQL is healthy. The container runs as UID 10001, with a
+read-only root filesystem, writable temporary directory and dropped capabilities.
+Only loopback host ports are published. The image tags track Java 21 updates;
+pin tested image digests for a reproducible externally deployed release.
+
+Set `ADMIN_TOKEN` to at least 32 characters in `.env` to enable administrative
+routes and Prometheus. Pass it as `X-Admin-Token`. The public local catalog,
+search and event routes do not implement end-user authentication.
+
+Install Spark 4.0.1 separately, set `SPARK_HOME`, and run `bash scripts/demo.sh`
+against a disposable local application. The script publishes a synthetic model
+and changes local rollout state. `analytics/run.sh` runs offline on Java 17 or 21.
+See [ML workflow](ml-workflow.md) for the real-event export/training commands.
+
+`scripts/verify-runtime.sh` stops/restarts the current Compose PostgreSQL service
+to exercise recovery. It is intended for disposable environments. CI uses a
+unique Compose project and removes only its own volumes after verification.
 
 ## Primary references
 
