@@ -1,111 +1,107 @@
 # AI-Native Search Ranking Optimization Platform
 
-A Java/Spring platform for developing search-ranking data and services. The
-current application provides a PostgreSQL-backed ad catalog. Separate Java/Spark
-reference implementations define selected analytics and feature semantics.
+A Java/Spring and Apache Spark platform connecting catalog search, observed
+interactions, reproducible training data, and versioned ML serving. PostgreSQL
+owns online state; a separate Java/Spark process computes features and trains a
+logistic-regression click model. The request path never starts Spark.
 
-## Current scope
+## Capabilities
 
-| Component | Status |
+| Area | Implemented behavior |
 | --- | --- |
-| Java 21 / Spring Boot application | Catalog API with validated create/read operations |
-| PostgreSQL persistence | Explicit JDBC queries, UUID identifiers, UTC timestamps, Flyway migration |
-| Operational behavior | Health, liveness/readiness, bounded DB waits, Problem Details errors |
-| Verification | Unit tests, real HTTP/PostgreSQL integration tests, smoke script, CI workflow |
-| Java / Spark references | Ten implementations with synthetic fixtures and named checks |
-| Ranking, feature publication, models, experiments | Subsequent platform milestones |
+| Retrieval and ranking | Full-text index; 200-candidate cap; relevance/popularity baseline; Java model scoring; stable ties |
+| Interaction data | Actual exposures, click attribution, retry deduplication and conflict detection |
+| Training data | Immutable exports, keyset pagination, captured prediction-time features and mature labels |
+| Batch processing | Canonical Parquet, daily aggregates, rolling feature snapshots and completed-run manifests |
+| ML | Training-only scaling, regularization selection, purged temporal splits and untouched test evaluation |
+| Evaluation | Log loss, Brier score, AUC, calibration and grouped NDCG with declared baselines |
+| Model operations | Immutable registry, validation gate, deterministic rollout and revision-checked rollback |
+| Experiments | Durable user assignment, intent-to-treat conversion, uncertainty, allocation checks and stop control |
+| Operations | Baseline fallback, delayed quality reports, Prometheus, readiness/liveness and container packaging |
 
-The application foundation passes its **JDK 21 build, eight unit tests, and
-21 PostgreSQL integration checks in CI**. The manual Compose startup, smoke,
-and restart/recovery exercises remain pending. See
-[verification evidence](docs/verification.md) for the tested commit and run.
-No production throughput, ranking quality, or business lift has been established.
+The implementation bounds feature publication to 10,000 ads, frozen exports to
+100,000 examples, and responses to 50 results. These are explicit limits, not
+production capacity claims. See [architecture](docs/architecture.md) and
+[verification evidence](docs/ml-verification.md).
 
-## Start here
+## Run locally
 
-Install JDK 21 and Docker with Compose. Copy `.env.example` to `.env` and choose
-a local database password. From the repository root:
+Install Docker with Compose. Copy `.env.example` to `.env`, choose a local
+database password, and set `ADMIN_TOKEN` to at least 32 characters (generate one
+with `openssl rand -hex 32`). Administrative APIs are disabled without a token.
+
+```bash
+docker compose --profile application up --build -d
+curl http://127.0.0.1:8080/actuator/health/readiness
+```
+
+Application and database ports publish only to loopback. For IDE development
+with JDK 21, start only PostgreSQL and run `./mvnw spring-boot:run` after exporting
+`.env`. See the [development guide](docs/development.md).
+
+```bash
+curl http://127.0.0.1:8080/api/v1/ads \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Camera Alpha","category":"Cameras"}'
+curl http://127.0.0.1:8080/api/v1/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"camera","userId":"example-user","limit":10}'
+```
+
+Search returns request identity, serving policy, model/snapshot versions and
+ranked items. Returning an item does not count as an impression. Catalog
+creation and searches are not idempotent; interaction events have explicit
+identity and retry contracts.
+
+## Run the complete ML demonstration
+
+Set `SPARK_HOME` to Apache Spark 4.0.1 and use Java 17 or 21 for the batch runner.
+The shell scripts also require Bash, `curl`, `jq`, and `sha256sum` (Linux or WSL).
+With the application running:
 
 ```bash
 set -a
 source .env
 set +a
-docker compose up -d --wait postgres
-./mvnw spring-boot:run
+export SPARK_HOME=/absolute/path/to/spark-4.0.1-bin-hadoop3
+bash scripts/demo.sh
 ```
 
-The application listens on `127.0.0.1:8080`. In another terminal:
+The script creates a synthetic catalog, trains/evaluates a model, verifies Java
+scoring parity, publishes artifacts, enables the model locally and records a
+simulated impression/click. Results go under `demo-output/`. It changes local
+catalog and deployment state; use a disposable environment.
 
-```bash
-curl -i http://127.0.0.1:8080/actuator/health/readiness
-curl -i http://127.0.0.1:8080/api/v1/ads \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"Camera","category":"Electronics"}'
-```
-
-Creation returns `201` with the ad and its relative `Location` URI. Fetch that
-URI to read the persisted record. Creation is not idempotent; see the
-[API contract](docs/api.md) before implementing client retries.
+Synthetic labels test recovery of a known signal. They do not establish real
+relevance, business lift or experiment power. For observed interaction data,
+follow the [ML workflow](docs/ml-workflow.md).
 
 ## Verify
-
-Run unit tests or the complete verification gate:
 
 ```bash
 ./mvnw test
 ./mvnw -Pintegration verify
+bash scripts/smoke-test.sh
 ```
 
-Integration tests require Docker and create disposable PostgreSQL instances;
-they do not use your development database. The CI workflow runs the full gate.
-For an already-running local application, `bash scripts/smoke-test.sh` performs
-a create/read/validation check using `curl` and `jq`.
+Integration tests require Docker and own disposable PostgreSQL instances. CI
+also builds the application container, checks database outage/recovery, and
+runs training through model serving. The [verification report](docs/ml-verification.md)
+distinguishes executed checks from configured or pending checks.
 
 ## Documentation
 
 | Document | Purpose |
 | --- | --- |
-| [Development guide](docs/development.md) | Setup, configuration, test commands, troubleshooting |
-| [API contract](docs/api.md) / [OpenAPI](docs/openapi.yaml) | Requests, responses, errors, identity, retry semantics |
-| [Architecture](docs/architecture.md) | Implemented module boundaries and future platform topology |
-| [Foundation decision](docs/decisions/0001-application-foundation.md) | Alternatives, trade-offs, and consequences |
-| [Operations](docs/operations.md) | Startup, database outages, health, persistence, recovery |
-| [Verification evidence](docs/verification.md) | Checks performed and remaining gates |
+| [Architecture](docs/architecture.md) | Modules, consistency boundaries and scale limits |
+| [API](docs/api.md) / [OpenAPI](docs/openapi.yaml) | Requests, errors, administrative access and retries |
+| [Data contracts](docs/data-contracts.md) | Grain, attribution, lateness, maturity and snapshots |
+| [ML workflow](docs/ml-workflow.md) | Export, train, evaluate, publish, serve and monitor |
+| [Experiments](docs/experiments.md) | Assignment, estimand, uncertainty and limitations |
+| [Operations](docs/operations.md) | Rollout, rollback, failures and retention |
+| [Development](docs/development.md) | Setup and verification commands |
+| [Design decision](docs/decisions/0002-ranking-and-ml.md) | Trade-offs and delivery boundaries |
+| [Roadmap coverage](docs/roadmap.md) | Six stages mapped to code and evidence |
 
-## Analytics references
-
-The standalone [Java/Spark references](practice/spark/README.md) cover CTR, lookup
-joins, ranking windows, event versions, rolling metrics, skew, aggregation,
-experiments, point-in-time features, and Parquet behavior. Their runtime stays
-outside the HTTP application's classpath.
-
-```bash
-export SPARK_PREP_HOME=/absolute/path/to/spark-4.0.1-bin-hadoop3
-bash practice/spark/run.sh --lab all
-```
-
-The [CTR exercise](docs/exercises/01-clicked-impression-ctr.md) provides an optional
-implementation exercise alongside the working references. These references are
-not yet integrated with catalog data.
-
-## Build the platform in stages
-
-The [learning path](docs/learning-path.md) gives each stage a deliverable, an
-acceptance check, and questions to explain aloud:
-
-1. Event contracts, deduplication, and CTR.
-2. Batch features, rolling windows, and point-in-time joins.
-3. A deterministic Java search and ranking baseline.
-4. A first trained model with temporal evaluation.
-5. Randomized assignment and trustworthy experiment metrics.
-6. Versioned deployment, fallback, rollback, and monitoring.
-
-See the [target architecture](docs/architecture.md) for how those pieces fit.
-Build one stage at a time and record what the evidence actually shows.
-
-## Primary references
-
-- [Apache Spark 4.0.1 overview and supported runtimes](https://spark.apache.org/docs/4.0.1/)
-- [Java Dataset API](https://spark.apache.org/docs/4.0.1/api/java/org/apache/spark/sql/Dataset.html)
-- [Spark SQL performance tuning](https://spark.apache.org/docs/4.0.1/sql-performance-tuning.html)
-- [Spring Boot system requirements](https://docs.spring.io/spring-boot/system-requirements.html)
+Earlier [Java/Spark references](practice/spark/README.md) remain isolated
+examples. The integrated batch application is in [`analytics/`](analytics/README.md).

@@ -1,22 +1,20 @@
 openapi: 3.1.0
 info:
-  title: Search Ranking Platform — Ad Catalog
-  version: 1.0.0
-  description: >-
-    Local application foundation. Creates and retrieves ad catalog entries.
-    POST is not idempotent. Authentication and external deployment are outside
-    this increment; the application binds to loopback by default.
+  title: Search Ranking Platform
+  version: 2.0.0
+  description: Catalog, bounded search, attributed interactions, immutable data/model artifacts, deployment
+    and experiments. Local service; administrative APIs require X-Admin-Token. Public routes do not verify
+    end-user identity.
 servers:
-  - url: http://127.0.0.1:8080
+- url: http://127.0.0.1:8080
 paths:
   /api/v1/ads:
     post:
       operationId: createAd
       summary: Create an ad catalog entry
-      description: >-
-        Generates a new UUID on each request. Validated strings are stripped of
-        surrounding whitespace before storage. A failed or timed-out request
-        may have an uncertain write outcome and must not be blindly retried.
+      description: Generates a new UUID on each request. Validated strings are stripped of surrounding whitespace
+        before storage. A failed or timed-out request may have an uncertain write outcome and must not be blindly
+        retried.
       requestBody:
         required: true
         content:
@@ -50,12 +48,12 @@ paths:
           $ref: '#/components/responses/UnexpectedFailure'
   /api/v1/ads/{id}:
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     get:
       operationId: getAd
       summary: Retrieve an ad by its UUID
@@ -105,32 +103,1292 @@ paths:
           $ref: '#/components/responses/Healthy'
         '503':
           $ref: '#/components/responses/Unhealthy'
+  /api/v1/search:
+    post:
+      operationId: search
+      summary: Retrieve and rank bounded candidates
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      description: Creates a new request identity each time; does not record an exposure. A stopped experiment
+        explicitly falls back to baseline. Score is a probability only when policy is model.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+  /api/v1/events/impressions:
+    post:
+      operationId: recordImpression
+      summary: Record an observed returned item
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      description: One exposure per request/ad. Identical ID and payload retry is 200; conflicting identity/content
+        is 409. New exposure must arrive within one hour and occur in the hour after search.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Impression'
+  /api/v1/events/clicks:
+    post:
+      operationId: recordClick
+      summary: Record a click attributed to an impression
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      description: Click must occur within the 24-hour window and arrive within one hour. Missing impression
+        is 409. Several clicks do not multiply CTR labels.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Click'
+  /api/v1/admin/features/snapshots:
+    post:
+      operationId: publishFeatures
+      summary: Atomically publish immutable features
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      description: Unique ad IDs, known catalog references, a past cutoff and a nonempty window of at most
+        90 days are required. Metadata and rows commit together.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeaturePublication'
+  /api/v1/admin/features/latest:
+    get:
+      operationId: latestFeatures
+      summary: Read latest available compatible snapshot
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureSnapshot'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+  /api/v1/admin/models:
+    post:
+      operationId: registerModel
+      summary: Register an immutable model artifact
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelRegistration'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelRegistration'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      description: All fields are mandatory. Feature order and finite parameters are checked. Evaluation cutoffs
+        are strictly ordered and cannot end in the future. Does not promote the model.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClickModel'
+    get:
+      operationId: listModels
+      summary: List up to 100 model versions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+                maxItems: 100
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+  /api/v1/admin/models/{version}:
+    get:
+      operationId: getModel
+      summary: Read a model artifact
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClickModel'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      parameters:
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+  /api/v1/admin/deployment:
+    get:
+      operationId: getDeployment
+      summary: Read current model selection and revision
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+    put:
+      operationId: updateDeployment
+      summary: Promote or roll back with optimistic concurrency
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      description: revision is the expected current revision. Success increments it. Null model requires zero
+        rollout and selects the default baseline. Pinned experiments are independent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Deployment'
+  /api/v1/admin/deployment/history:
+    get:
+      operationId: deploymentHistory
+      summary: Read up to 100 deployment revisions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deployment'
+                maxItems: 100
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+  /api/v1/admin/experiments:
+    post:
+      operationId: createExperiment
+      summary: Create a frozen experiment definition
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentRegistration'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentRegistration'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Experiment'
+  /api/v1/admin/experiments/{id}/stop:
+    post:
+      operationId: stopExperiment
+      summary: Stop new experiment traffic idempotently
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentStop'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+  /api/v1/admin/experiments/{id}/report:
+    get:
+      operationId: experimentReport
+      summary: Report mature assigned-user click conversion
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentReport'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      description: 24-hour follow-up, 25-hour maturity, non-converters included. Intervals are fixed-horizon
+        diagnostics; no automated winner or power claim.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+      - name: asOf
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+  /api/v1/admin/metrics/ctr:
+    get:
+      operationId: clickedImpressionCtr
+      summary: Aggregate mature clicked-impression CTR
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ctr'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      description: Half-open event-time range of at most 31 days. asOf bounds receipt visibility. Only 25-hour-mature
+        impressions enter the denominator.
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: asOf
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+  /api/v1/admin/metrics/model-quality:
+    get:
+      operationId: modelQuality
+      summary: Report mature probability quality by served model
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelQuality'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: asOf
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+  /api/v1/admin/training-data:
+    get:
+      operationId: inspectTrainingData
+      summary: Inspect live mature examples
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPage'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      description: Live inspection only. Separate pages do not share a transactional snapshot. Use training-exports
+        for reproducibility.
+      parameters:
+      - name: asOf
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 1000
+  /api/v1/admin/training-exports:
+    post:
+      operationId: createTrainingExport
+      summary: Freeze mature labels and captured features in one MVCC view
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportReceipt'
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportReceipt'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+  /api/v1/admin/training-exports/{id}:
+    get:
+      operationId: pageTrainingExport
+      summary: Read an immutable export page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingPage'
+        '400':
+          description: Invalid request or contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Administrative token missing, invalid, or disabled
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Referenced resource not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Identity, payload, or deployment revision conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Quality gate or supported size bound failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Database operation could not be confirmed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Unexpected server failure
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+      - AdminToken: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5000
+          default: 1000
+  /actuator/prometheus:
+    get:
+      operationId: prometheusMetrics
+      summary: Internal operational metrics
+      security:
+      - AdminToken: []
+      responses:
+        '200':
+          description: Prometheus exposition
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Administrative token required
 components:
   schemas:
     CreateAd:
       type: object
       additionalProperties: false
-      required: [title, category]
+      required:
+      - title
+      - category
       properties:
         title:
           type: string
           minLength: 1
           maxLength: 200
-          description: >-
-            Length is measured in Unicode code points before whitespace stripping.
-            Blank values and Unicode control characters are rejected.
-          examples: [Camera]
+          description: Length is measured in Unicode code points before whitespace stripping. Blank values
+            and Unicode control characters are rejected.
+          examples:
+          - Camera
         category:
           type: string
           minLength: 1
           maxLength: 64
-          description: >-
-            Free-form category with preserved case. Blank values and Unicode
-            control characters are rejected. Surrounding whitespace is stripped.
-          examples: [Electronics]
+          description: Free-form category with preserved case. Blank values and Unicode control characters
+            are rejected. Surrounding whitespace is stripped.
+          examples:
+          - Electronics
     Ad:
       type: object
-      required: [id, title, category, createdAt]
+      required:
+      - id
+      - title
+      - category
+      - createdAt
       properties:
         id:
           type: string
@@ -149,7 +1407,10 @@ components:
           description: Server-generated UTC timestamp, at most microsecond precision
     Problem:
       type: object
-      required: [type, title, status]
+      required:
+      - type
+      - title
+      - status
       properties:
         type:
           type: string
@@ -167,7 +1428,9 @@ components:
           type: array
           items:
             type: object
-            required: [field, message]
+            required:
+            - field
+            - message
             properties:
               field:
                 type: string
@@ -175,7 +1438,8 @@ components:
                 type: string
     Health:
       type: object
-      required: [status]
+      required:
+      - status
       properties:
         status:
           type: string
@@ -183,6 +1447,682 @@ components:
           type: array
           items:
             type: string
+    SearchRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - query
+      - userId
+      - limit
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 120
+        userId:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        experimentId:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+          - type: 'null'
+    RankedItem:
+      type: object
+      additionalProperties: false
+      required:
+      - adId
+      - title
+      - category
+      - position
+      - score
+      properties:
+        adId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        position:
+          type: integer
+          minimum: 1
+          maximum: 50
+        score:
+          type: number
+          minimum: 0
+          maximum: 1.25
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - requestId
+      - createdAt
+      - policy
+      - modelVersion
+      - snapshotId
+      - experimentId
+      - arm
+      - fallbackReason
+      - items
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        policy:
+          type: string
+          enum:
+          - baseline
+          - model
+        modelVersion:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+          - type: 'null'
+        snapshotId:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+        experimentId:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+          - type: 'null'
+        arm:
+          anyOf:
+          - type: string
+            enum:
+            - control
+            - treatment
+          - type: 'null'
+        fallbackReason:
+          anyOf:
+          - type: string
+          - type: 'null'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RankedItem'
+          maxItems: 50
+    Impression:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - requestId
+      - adId
+      - occurredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        adId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+    Click:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - impressionId
+      - occurredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        impressionId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+    Receipt:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - created
+      properties:
+        id:
+          type: string
+          format: uuid
+        created:
+          type: boolean
+    FeatureCounts:
+      type: object
+      additionalProperties: false
+      required:
+      - adId
+      - impressions
+      - clickedImpressions
+      properties:
+        adId:
+          type: string
+          format: uuid
+        impressions:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        clickedImpressions:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+          description: Must not exceed impressions.
+    FeaturePublication:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - schemaVersion
+      - windowStart
+      - cutoff
+      - sourceId
+      - rows
+      properties:
+        id:
+          type: string
+          format: uuid
+        schemaVersion:
+          type: string
+          enum:
+          - click-v1
+        windowStart:
+          type: string
+          format: date-time
+        cutoff:
+          type: string
+          format: date-time
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureCounts'
+          maxItems: 10000
+    FeatureSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - cutoff
+      - availableAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        cutoff:
+          type: string
+          format: date-time
+        availableAt:
+          type: string
+          format: date-time
+    ClickModel:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - schemaVersion
+      - featureNames
+      - means
+      - scales
+      - coefficients
+      - intercept
+      - trainedThrough
+      - validationThrough
+      - evaluationAsOf
+      - trainingRows
+      - validationRows
+      - testRows
+      - validationLogLoss
+      - baselineValidationLogLoss
+      - testLogLoss
+      - baselineTestLogLoss
+      - testBrierScore
+      - sourceId
+      properties:
+        version:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        schemaVersion:
+          type: string
+          enum:
+          - click-v1
+        featureNames:
+          type: array
+          minItems: 3
+          maxItems: 3
+          prefixItems:
+          - const: textRelevance
+          - const: smoothedCtr
+          - const: logImpressions
+        means:
+          type: array
+          items:
+            type: number
+            minimum: -1000000
+            maximum: 1000000
+          minItems: 3
+          maxItems: 3
+        scales:
+          type: array
+          items:
+            type: number
+            minimum: 1.0e-12
+            maximum: 1000000
+          minItems: 3
+          maxItems: 3
+        coefficients:
+          type: array
+          items:
+            type: number
+            minimum: -1000000
+            maximum: 1000000
+          minItems: 3
+          maxItems: 3
+        intercept:
+          type: number
+          minimum: -1000000
+          maximum: 1000000
+        trainedThrough:
+          type: string
+          format: date-time
+        validationThrough:
+          type: string
+          format: date-time
+        evaluationAsOf:
+          type: string
+          format: date-time
+        trainingRows:
+          type: integer
+          minimum: 2
+        validationRows:
+          type: integer
+          minimum: 2
+        testRows:
+          type: integer
+          minimum: 2
+        validationLogLoss:
+          type: number
+          minimum: 0
+          maximum: 100
+        baselineValidationLogLoss:
+          type: number
+          minimum: 0
+          maximum: 100
+        testLogLoss:
+          type: number
+          minimum: 0
+          maximum: 100
+        baselineTestLogLoss:
+          type: number
+          minimum: 0
+          maximum: 100
+        testBrierScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+    ModelRegistration:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      - created
+      - promotionEligible
+      properties:
+        version:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        created:
+          type: boolean
+        promotionEligible:
+          type: boolean
+    Deployment:
+      type: object
+      additionalProperties: false
+      required:
+      - revision
+      - modelVersion
+      - rolloutPercent
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        modelVersion:
+          anyOf:
+          - type: string
+            pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+          - type: 'null'
+        rolloutPercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+    Experiment:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - salt
+      - modelVersion
+      - treatmentPercent
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        salt:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        modelVersion:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        treatmentPercent:
+          type: integer
+          minimum: 10
+          maximum: 90
+    ExperimentRegistration:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - created
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        created:
+          type: boolean
+    ExperimentStop:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - stopped
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        stopped:
+          type: boolean
+    ExperimentArm:
+      type: object
+      additionalProperties: false
+      required:
+      - users
+      - convertedUsers
+      - rate
+      - lower95
+      - upper95
+      properties:
+        users:
+          type: integer
+          minimum: 0
+        convertedUsers:
+          type: integer
+          minimum: 0
+        rate:
+          anyOf:
+          - type: number
+            minimum: 0
+            maximum: 1
+          - type: 'null'
+        lower95:
+          anyOf:
+          - type: number
+            minimum: 0
+            maximum: 1
+          - type: 'null'
+        upper95:
+          anyOf:
+          - type: number
+            minimum: 0
+            maximum: 1
+          - type: 'null'
+    ExperimentComparison:
+      type: object
+      additionalProperties: false
+      required:
+      - control
+      - treatment
+      - absoluteLift
+      - liftLower95
+      - liftUpper95
+      - allocationChiSquare
+      - sampleRatioMismatch
+      - smallSample
+      properties:
+        control:
+          $ref: '#/components/schemas/ExperimentArm'
+        treatment:
+          $ref: '#/components/schemas/ExperimentArm'
+        absoluteLift:
+          anyOf:
+          - type: number
+            minimum: -1
+            maximum: 1
+          - type: 'null'
+        liftLower95:
+          anyOf:
+          - type: number
+            minimum: -1
+            maximum: 1
+          - type: 'null'
+        liftUpper95:
+          anyOf:
+          - type: number
+            minimum: -1
+            maximum: 1
+          - type: 'null'
+        allocationChiSquare:
+          type: number
+          minimum: 0
+        sampleRatioMismatch:
+          type: boolean
+        smallSample:
+          type: boolean
+    ExperimentReport:
+      type: object
+      additionalProperties: false
+      required:
+      - experimentId
+      - asOf
+      - metric
+      - followUpHours
+      - active
+      - comparison
+      properties:
+        experimentId:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        asOf:
+          type: string
+          format: date-time
+        metric:
+          type: string
+        followUpHours:
+          type: integer
+          enum:
+          - 24
+        active:
+          type: boolean
+        comparison:
+          $ref: '#/components/schemas/ExperimentComparison'
+    TrainingRow:
+      type: object
+      additionalProperties: false
+      required:
+      - impressionId
+      - requestId
+      - adId
+      - predictionTime
+      - impressionTime
+      - labelAvailableAt
+      - schemaVersion
+      - textRelevance
+      - smoothedCtr
+      - logImpressions
+      - label
+      properties:
+        impressionId:
+          type: string
+          format: uuid
+        requestId:
+          type: string
+          format: uuid
+        adId:
+          type: string
+          format: uuid
+        predictionTime:
+          type: string
+          format: date-time
+        impressionTime:
+          type: string
+          format: date-time
+        labelAvailableAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: string
+          enum:
+          - click-v1
+        textRelevance:
+          type: number
+          minimum: 0
+          maximum: 1
+        smoothedCtr:
+          type: number
+          minimum: 0
+          maximum: 1
+        logImpressions:
+          type: number
+          minimum: 0
+        label:
+          type: integer
+          enum:
+          - 0
+          - 1
+    TrainingPage:
+      type: object
+      additionalProperties: false
+      required:
+      - asOf
+      - rows
+      - nextAfter
+      properties:
+        asOf:
+          type: string
+          format: date-time
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingRow'
+          maxItems: 5000
+        nextAfter:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+    ExportRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - asOf
+      properties:
+        id:
+          type: string
+          format: uuid
+        asOf:
+          type: string
+          format: date-time
+    ExportReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - asOf
+      - rows
+      - created
+      properties:
+        id:
+          type: string
+          format: uuid
+        asOf:
+          type: string
+          format: date-time
+        rows:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        created:
+          type: boolean
+    Ctr:
+      type: object
+      additionalProperties: false
+      required:
+      - adId
+      - impressions
+      - clickedImpressions
+      - ctr
+      properties:
+        adId:
+          type: string
+          format: uuid
+        impressions:
+          type: integer
+          minimum: 1
+        clickedImpressions:
+          type: integer
+          minimum: 0
+        ctr:
+          type: number
+          minimum: 0
+          maximum: 1
+    ModelQuality:
+      type: object
+      additionalProperties: false
+      required:
+      - modelVersion
+      - impressions
+      - logLoss
+      - brierScore
+      - ctr
+      properties:
+        modelVersion:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+        impressions:
+          type: integer
+          minimum: 1
+        logLoss:
+          type: number
+          minimum: 0
+        brierScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        ctr:
+          type: number
+          minimum: 0
+          maximum: 1
   responses:
     BadRequest:
       description: Invalid JSON, invalid fields, or invalid UUID
@@ -214,3 +2154,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Health'
+  securitySchemes:
+    AdminToken:
+      type: apiKey
+      in: header
+      name: X-Admin-Token
+      description: Configured token of at least 32 characters. Administrative routes are disabled otherwise.

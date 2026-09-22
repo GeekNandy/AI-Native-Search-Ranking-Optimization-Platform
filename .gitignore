@@ -45,3 +45,11 @@ practice/spark/spark-warehouse/
 practice/spark/artifacts/
 practice/spark/derby.log
 practice/spark/metastore_db/
+
+# Immutable local analytics runs and generated demonstration data.
+analytics/output/
+analytics/spark-warehouse/
+analytics/artifacts/
+demo-output/
+spark-warehouse/
+artifacts/
