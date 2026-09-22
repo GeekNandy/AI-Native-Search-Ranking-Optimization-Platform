@@ -4,7 +4,7 @@ services:
     build: .
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/search_ranking
-      DB_USERNAME: search_ranking
+      DB_USERNAME: ${DB_USERNAME:-search_ranking}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       SERVER_ADDRESS: 0.0.0.0

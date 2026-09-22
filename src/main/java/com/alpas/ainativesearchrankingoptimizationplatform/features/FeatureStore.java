@@ -79,11 +79,15 @@ public class FeatureStore {
     }
 
     public Optional<Snapshot> latest() {
+        return latest(clock.instant());
+    }
+
+    public Optional<Snapshot> latest(Instant asOf) {
         return jdbc.sql("""
                 SELECT id,cutoff,available_at FROM feature_snapshots
                 WHERE schema_version=:schema AND cutoff<=:now AND available_at<=:now
                 ORDER BY cutoff DESC, available_at DESC, id DESC LIMIT 1
-                """).param("schema", ClickModel.SCHEMA).param("now", clock.instant().atOffset(ZoneOffset.UTC))
+                """).param("schema", ClickModel.SCHEMA).param("now", asOf.atOffset(ZoneOffset.UTC))
                 .query((rs,n) -> new Snapshot(rs.getObject(1,UUID.class), rs.getObject(2,OffsetDateTime.class).toInstant(),
                         rs.getObject(3,OffsetDateTime.class).toInstant())).optional();
     }

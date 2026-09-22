@@ -2,6 +2,7 @@ package com.alpas.ainativesearchrankingoptimizationplatform.platform;
 
 import static org.junit.jupiter.api.Assertions.*;
 import com.alpas.ainativesearchrankingoptimizationplatform.ml.ClickModel;
+import com.alpas.ainativesearchrankingoptimizationplatform.features.FeatureStore;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -64,6 +65,7 @@ class RankingPlatformIT {
     @Autowired JdbcClient jdbc;
     @Autowired MutableClock clock;
     @Autowired JsonMapper json;
+    @Autowired FeatureStore featureStore;
     private final HttpClient http=HttpClient.newHttpClient();
     private String firstAd,secondAd;
 
@@ -128,6 +130,8 @@ class RankingPlatformIT {
     @Test void publishesImmutableSnapshotsAtomicallyAndFallsBackWhenStale() throws Exception {
         String id=UUID.randomUUID().toString(); Map<String,Object> snapshot=snapshot(id,firstAd);
         ok("POST","/api/v1/admin/features/snapshots",snapshot,201);
+        assertTrue(featureStore.latest(START.minusSeconds(1)).isEmpty(),"A request cannot use features published after its prediction time");
+        assertEquals(UUID.fromString(id),featureStore.latest(START).orElseThrow().id());
         ok("POST","/api/v1/admin/features/snapshots",snapshot,200);
         ok("POST","/api/v1/admin/features/snapshots",snapshot(id,secondAd),409);
         String missing=UUID.randomUUID().toString();

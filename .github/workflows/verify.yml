@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
+      DB_USERNAME: ranking_ci
       DB_PASSWORD: integration-only-database-password
       ADMIN_TOKEN: integration-only-admin-token-for-local-ci
       COMPOSE_PROJECT_NAME: ranking-ci-${{ github.run_id }}-${{ github.run_attempt }}

@@ -23,18 +23,37 @@ These are synthetic software checks, not measurements of production relevance,
 revenue, latency capacity or causal lift. The generated data deliberately contains
 a learnable signal.
 
-## Application verification
+## Application and container verification
 
-The increment adds unit tests for scoring, schema/vector constraints, cold start,
-assignment and uncertainty, plus HTTP/PostgreSQL integration scenarios for
-events, exports, features, models, experiments and administrative access.
+[GitHub Actions run 35694561257](https://github.com/GeekNandy/AI-Native-Search-Ranking-Optimization-Platform/actions/runs/35694561257)
+passed on September 22, 2026 for implementation commit `7baa8af7137de71f6ac398f7a5dd24205abe4f13`.
+The runner used Java 21, PostgreSQL 17 containers and Spark 4.0.1.
 
-Java 21 compilation and all 16 unit tests pass locally (zero failures, errors or
-skips). PostgreSQL integration and container demonstration results are pending
-while this change is being completed. The local environment has no Docker. The CI
-workflow is configured to run `./mvnw -Pintegration verify`, container
-startup/recovery checks, and the trained-model demonstration. Replace this
-pending status with observed results before merging.
+| Check | Observed result |
+| --- | --- |
+| Java compilation and unit tests | 16 passed; zero failures, errors or skips |
+| HTTP/PostgreSQL integration tests | 29 passed; zero failures, errors or skips |
+| Container image | Built successfully; application started with both Flyway migrations |
+| Database outage | Readiness and catalog lookup returned `503`; liveness remained `200` |
+| Database recovery | Readiness returned `200`; the previously created ad retained identical content |
+| HTTP smoke check | Creation, lookup and invalid-input rejection passed |
+| Complete ML demonstration | Train, evaluate, publish, select model, rank, expose and click passed |
+| Serving assertion | Response used the newly published model and snapshot, with five probability-scored results and no fallback |
+| CI scoring parity | Maximum difference `2.220446049250313e-16`; test log loss `0.5550168101063657` |
+
+Integration scenarios cover duplicate/conflicting events, attribution bounds,
+label maturity, immutable exports, feature publication rollback, schema and
+quality gates, concurrent deployment changes, model rollback, stale-feature
+fallback, experimental non-converters, experiment stopping and token protection
+for both administrative routes and Prometheus.
+
+Local Java 21 compilation and the same 16 unit tests also passed. The initial
+standalone Spark run above used Java 17; the container demonstration in CI used
+Java 21. No production traffic, capacity benchmark or causal experiment was run.
+
+This is a dated execution record. Use the checks on
+[draft PR #4](https://github.com/GeekNandy/AI-Native-Search-Ranking-Optimization-Platform/pull/4)
+for verification of subsequent commits on the branch.
 
 ## Commands
 

@@ -76,7 +76,7 @@ public class SearchService {
                 ORDER BY relevance DESC,id LIMIT 200
                 """).param("query",request.query()).query((rs,n) -> new Candidate(rs.getObject(1,UUID.class),
                         rs.getString(2),rs.getString(3),rs.getDouble(4))).list();
-        FeatureStore.Snapshot snapshot = features.latest().orElse(null);
+        FeatureStore.Snapshot snapshot = features.latest(now).orElse(null);
         String fallback = target == null ? "baseline_selected" : null;
         if (request.experimentId()!=null && assignment==null) fallback="experiment_stopped";
         if (snapshot == null) fallback = target == null ? fallback : "missing_features";

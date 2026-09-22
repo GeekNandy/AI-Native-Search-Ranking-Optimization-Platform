@@ -56,6 +56,7 @@ identity and retry contracts.
 ## Run the complete ML demonstration
 
 Set `SPARK_HOME` to Apache Spark 4.0.1 and use Java 17 or 21 for the batch runner.
+The shell scripts also require Bash, `curl`, `jq`, and `sha256sum` (Linux or WSL).
 With the application running:
 
 ```bash

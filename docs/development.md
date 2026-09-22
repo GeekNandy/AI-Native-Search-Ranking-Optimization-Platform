@@ -1,9 +1,11 @@
 # Development guide
 
-The application provides catalog, search, interaction, model and experiment APIs backed by PostgreSQL. Use
-JDK 21, Docker with Compose, and the checked-in Maven wrapper. The database is
-the only Compose service; run the application from your IDE or Maven for fast
-debugging. Maven Central and the container registry must be reachable on first use.
+The application provides catalog, search, interaction, model and experiment APIs
+backed by PostgreSQL. Use JDK 21, Docker with Compose, and the checked-in Maven
+wrapper. The default Compose selection starts PostgreSQL; the `application`
+profile also builds and starts the API. Run the application from your IDE or
+Maven for fast debugging. Maven Central and the container registry must be
+reachable on first use.
 
 ## Start locally
 
@@ -32,7 +34,7 @@ select JDK 21 for both the project and Maven, and supply the variables from `.en
 in the run configuration. Run
 `AiNativeSearchRankingOptimizationPlatformApplication` as the entry point.
 
-Flyway applies `V1__create_ads.sql` at startup. Keep existing migrations immutable
+Flyway applies catalog and ranking migrations at startup. Keep existing migrations immutable
 after they have been used in a shared environment; introduce a new migration for
 subsequent changes. Avoid manual schema initialization alongside Flyway.
 
@@ -100,6 +102,7 @@ substitute for that gate.
 | `DB_PORT` | `5432` | Compose host port; update `DB_URL` if changed |
 | `SERVER_PORT` | `8080` | Application HTTP port |
 | `SERVER_ADDRESS` | `127.0.0.1` | Application bind address |
+| `ADMIN_TOKEN` | Empty (administration disabled) | Shared development token for administrative routes and Prometheus; at least 32 characters |
 
 The example environment values are for local development. An externally hosted
 database requires its own credentials and connection/TLS configuration.
@@ -148,7 +151,8 @@ Set `ADMIN_TOKEN` to at least 32 characters in `.env` to enable administrative
 routes and Prometheus. Pass it as `X-Admin-Token`. The public local catalog,
 search and event routes do not implement end-user authentication.
 
-Install Spark 4.0.1 separately, set `SPARK_HOME`, and run `bash scripts/demo.sh`
+Install Spark 4.0.1, Bash, `curl`, `jq`, and `sha256sum` (Linux or WSL),
+set `SPARK_HOME`, and run `bash scripts/demo.sh`
 against a disposable local application. The script publishes a synthetic model
 and changes local rollout state. `analytics/run.sh` runs offline on Java 17 or 21.
 See [ML workflow](ml-workflow.md) for the real-event export/training commands.
